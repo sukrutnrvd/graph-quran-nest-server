@@ -4,52 +4,53 @@ import { Driver } from 'neo4j-driver-core';
 import { Utils } from 'src/utils/utils';
 
 @Injectable()
-export class VerseRepository {
+export class RootRepository {
   private readonly session: Session;
 
   constructor(@Inject('NEO4J_DRIVER') private readonly driver: Driver) {
     this.session = this.driver.session();
   }
 
-  async getContainForOneRoot(root: string) {
+  async getRelationsForOneRoot(root: string) {
     return await this.session.run(
       `MATCH (root:Root {rootId: $rootId})-[occurs:OCCURS]-()
-       WITH DISTINCT occurs.surah AS surah, occurs.verse AS verse, root
-       RETURN surah,verse,root
-       ORDER BY surah, verse
+       WITH properties(occurs) as relations, root
+       ORDER BY relations.surah, relations.verse
+       RETURN root, COLLECT(DISTINCT relations) as relations
         `,
       { rootId: root },
     );
   }
 
-  async getContainForMultipleRoots(roots: number[]) {
+  async getRelationsForMultipleRoots(roots: number[]) {
     const returnVariables =
-      this.generateContainMultipleRootsReturnVariables(roots);
+      this.generateRelationsMultipleRootsReturnVariables(roots);
 
-    const query = this.generateContainMultipleRootsQuery(
+    const query = this.generateRelationsMultipleRootsQuery(
       roots,
       returnVariables,
     );
 
     const queryVariables =
-      this.generateContainMultipleRootsQueryVariables(roots);
+      this.generateRelationsMultipleRootsQueryVariables(roots);
 
     return await this.session.run(query, queryVariables);
   }
 
-  private generateContainMultipleRootsQuery(
+  private generateRelationsMultipleRootsQuery(
     roots: number[],
     returnVariables: string,
   ) {
     return [
       this.generateMatchQuery(roots).join('\n'),
       this.generateWhereQuery(roots),
-      `RETURN DISTINCT ${returnVariables}`,
-      'ORDER BY properties(r1).surah, properties(r1).verse',
+      `WITH ${returnVariables}`,
+      `ORDER BY properties.surah, properties.verse`,
+      `RETURN ${this.generateOrdinalRoots(roots)}, COLLECT(DISTINCT properties) as relations`,
     ].join('\n');
   }
 
-  private generateContainMultipleRootsQueryVariables(roots: number[]) {
+  private generateRelationsMultipleRootsQueryVariables(roots: number[]) {
     return roots.reduce(
       (variables, root, index) => {
         const ordinal = Utils.numberToOrdinal(index + 1);
@@ -60,11 +61,8 @@ export class VerseRepository {
     );
   }
 
-  private generateContainMultipleRootsReturnVariables(roots: number[]) {
-    return (
-      roots.map((_, i) => `${Utils.numberToOrdinal(i + 1)}Root`).join(', ') +
-      ', properties(r1)'
-    );
+  private generateRelationsMultipleRootsReturnVariables(roots: number[]) {
+    return `${this.generateOrdinalRoots(roots)}, properties(r1) as properties`;
   }
 
   private generateMatchQuery(roots: number[]) {
@@ -88,5 +86,11 @@ export class VerseRepository {
       .join(' AND ');
 
     return `WHERE ${query}`;
+  }
+
+  private generateOrdinalRoots(roots: number[]) {
+    return roots
+      .map((_, i) => `${Utils.numberToOrdinal(i + 1)}Root`)
+      .join(', ');
   }
 }

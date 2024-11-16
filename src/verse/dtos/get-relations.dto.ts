@@ -6,7 +6,7 @@ import {
   IsNumber,
 } from 'class-validator';
 
-export class GetContainDto {
+export class GetRelationsDto {
   @ArrayUnique()
   @ArrayMaxSize(10, { message: 'Roots must contain no more than 10 elements' })
   @IsNumber({}, { each: true, message: 'Roots should be an array of numbers' })

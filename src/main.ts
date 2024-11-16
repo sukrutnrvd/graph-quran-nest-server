@@ -1,5 +1,6 @@
 import { AppModule } from './app.module';
 import { NestFactory } from '@nestjs/core';
+import { ResponseInterceptor } from './common/interceptors/response.interceptors';
 import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
@@ -12,6 +13,7 @@ async function bootstrap() {
       transform: true,
     }),
   );
+  app.useGlobalInterceptors(new ResponseInterceptor());
   app.setGlobalPrefix('api/v1');
   await app.listen(process.env.PORT ?? 3000);
 }

@@ -1,7 +1,7 @@
 import { Expose, plainToClass } from 'class-transformer';
 import { QueryResult, RecordShape } from 'neo4j-driver';
 
-import { ContainResponseDto } from './contain-response.dto';
+import { RelationsResponseDto } from './relations-response.dto';
 import { Utils } from 'src/utils/utils';
 
 export class Root {
@@ -18,8 +18,15 @@ export class Root {
   elementId: string;
 }
 
+export class Verses {
+  @Expose()
+  surah: number;
+
+  @Expose()
+  verse: number;
+}
 export class VerseTransform {
-  static containOneRootResponseDto(
+  static relationsOneRootResponseDto(
     record: QueryResult<RecordShape>['records'][0],
   ) {
     const tranformed = {
@@ -29,27 +36,38 @@ export class VerseTransform {
           elementId: record.get('root').elementId,
         },
       ],
-      surah: record.get('surah').low,
-      verse: record.get('verse').low,
+      verses: record.get('relations').map((relation) => ({
+        surah: relation.surah.low,
+        verse: relation.verse.low,
+        ok: true,
+      })),
     };
-    return plainToClass(ContainResponseDto, tranformed);
+    return plainToClass(RelationsResponseDto, tranformed, {
+      excludeExtraneousValues: true,
+    });
   }
 
-  static containMultipleRootsResponseDto(
+  static relationsMultipleRootsResponseDto(
     record: QueryResult<RecordShape>['records'][0],
     roots: number[],
   ) {
     const transformed = {
       roots: roots.map((_, rootIndex) => {
         const ordinal = Utils.numberToOrdinal(rootIndex + 1);
+
         return {
           ...record.get(`${ordinal}Root`).properties,
           elementId: record.get(`${ordinal}Root`).elementId,
         };
       }),
-      surah: record.get('properties(r1)').surah.low,
-      verse: record.get('properties(r1)').verse.low,
+      verses: record.get('relations').map((relation) => ({
+        surah: relation.surah.low,
+        verse: relation.verse.low,
+      })),
     };
-    return plainToClass(ContainResponseDto, transformed);
+
+    return plainToClass(RelationsResponseDto, transformed, {
+      excludeExtraneousValues: true,
+    });
   }
 }

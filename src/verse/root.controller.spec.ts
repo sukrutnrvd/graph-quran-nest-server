@@ -1,27 +1,27 @@
 import { ConfigModule } from '@nestjs/config';
-import { ContainResponseDto } from './dtos/contain-response.dto';
-import { GetContainDto } from './dtos/get-contain.dto';
+import { GetRelationsDto } from './dtos/get-relations.dto';
 import { Neo4jModule } from '../neo4j/neo4j.module';
+import { RelationsResponseDto } from './dtos/relations-response.dto';
+import { RootController } from './root.controller';
+import { RootRepository } from './root.repository';
+import { RootService } from './root.service';
 import { Test } from '@nestjs/testing';
 import { ValidationPipe } from '@nestjs/common';
-import { VerseController } from './verse.controller';
-import { VerseRepository } from './verse.repository';
-import { VerseService } from './verse.service';
 
-describe('VerseController', () => {
-  let verseController: VerseController;
-  let verseService: VerseService;
+describe('rootController', () => {
+  let rootController: RootController;
+  let rootService: RootService;
   let validationPipe: ValidationPipe;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [Neo4jModule, ConfigModule.forRoot({ isGlobal: true })],
-      controllers: [VerseController],
-      providers: [VerseService, VerseRepository],
-      exports: [VerseService],
+      controllers: [RootController],
+      providers: [RootService, RootRepository],
+      exports: [RootService],
     }).compile();
-    verseController = moduleRef.get(VerseController);
-    verseService = moduleRef.get(VerseService);
+    rootController = moduleRef.get(RootController);
+    rootService = moduleRef.get(RootService);
     validationPipe = new ValidationPipe({
       whitelist: true,
       stopAtFirstError: true,
@@ -30,10 +30,10 @@ describe('VerseController', () => {
     });
   });
 
-  describe('contains', () => {
+  describe('relations', () => {
     it('should return correct root,surah and verse for requested one root', async () => {
-      jest.spyOn(verseService, 'getContain').mockImplementation(() => {
-        const response = new ContainResponseDto();
+      jest.spyOn(rootService, 'getRelations').mockImplementation(() => {
+        const response = new RelationsResponseDto();
         response.roots = [
           {
             rootId: '1641',
@@ -42,29 +42,42 @@ describe('VerseController', () => {
             elementId: '4:b5cfc258-7b3f-4563-bf3b-09ba89001793:1640',
           },
         ];
-        response.surah = 37;
-        response.verse = 177;
-        return Promise.resolve([response]);
+        response.verses = [{ surah: 37, verse: 177 }];
+        return Promise.resolve(response);
       });
-      const data = await verseController.contain({ roots: [1641] });
+      const data = await rootController.relations({ roots: [1641] });
 
-      expect(data[0].surah).toBe(37);
-      expect(data[0].verse).toBe(177);
-      expect(data[0].roots[0].rootId).toBe('1641');
+      expect(data.verses[0].surah).toBe(37);
+      expect(data.verses[0].verse).toBe(177);
+      expect(data.roots[0].rootId).toBe('1641');
     });
 
     it('should return correct surah and verse for requested multiple roots', async () => {
-      jest.spyOn(verseService, 'getContain').mockImplementation(() => {
-        const response = new ContainResponseDto();
-        response.roots = [];
-        response.surah = 37;
-        response.verse = 3;
-        return Promise.resolve([response]);
+      jest.spyOn(rootService, 'getRelations').mockImplementation(() => {
+        const response = new RelationsResponseDto();
+        response.roots = [
+          {
+            rootId: '1',
+            root: 'سمو',
+            transliteration: 'smw',
+            elementId: '4:bf9c53dc-3a4b-46a0-b014-e492fd29d86c:0',
+          },
+          {
+            rootId: '52',
+            root: 'ارض',
+            transliteration: 'ArD',
+            elementId: '4:bf9c53dc-3a4b-46a0-b014-e492fd29d86c:51',
+          },
+        ];
+        response.verses = [{ surah: 2, verse: 22 }];
+        return Promise.resolve(response);
       });
 
-      const data = await verseController.contain({ roots: [1, 2] });
-      expect(data[0].surah).toBe(37);
-      expect(data[0].verse).toBe(3);
+      const data = await rootController.relations({ roots: [1, 52] });
+      expect(data.verses[0].surah).toBe(2);
+      expect(data.verses[0].verse).toBe(22);
+      expect(data.roots[0].rootId).toBe('1');
+      expect(data.roots[1].rootId).toBe('52');
     });
 
     it("should return 'Roots should be defined' if no roots parameters given", async () => {
@@ -73,7 +86,7 @@ describe('VerseController', () => {
           {},
           {
             type: 'body',
-            metatype: GetContainDto,
+            metatype: GetRelationsDto,
           },
         );
       } catch (error) {
@@ -87,7 +100,7 @@ describe('VerseController', () => {
           { roots: [] },
           {
             type: 'body',
-            metatype: GetContainDto,
+            metatype: GetRelationsDto,
           },
         );
       } catch (error) {
@@ -103,7 +116,7 @@ describe('VerseController', () => {
           { roots: [1, 1] },
           {
             type: 'body',
-            metatype: GetContainDto,
+            metatype: GetRelationsDto,
           },
         );
       } catch (error) {
@@ -119,7 +132,7 @@ describe('VerseController', () => {
           { roots: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] },
           {
             type: 'body',
-            metatype: GetContainDto,
+            metatype: GetRelationsDto,
           },
         );
       } catch (error) {
@@ -135,7 +148,7 @@ describe('VerseController', () => {
           { roots: ['notNumber'] },
           {
             type: 'body',
-            metatype: GetContainDto,
+            metatype: GetRelationsDto,
           },
         );
       } catch (error) {
