@@ -22,4 +22,9 @@ export class RootService {
       roots,
     );
   }
+
+  async getFrequency(root: number) {
+    const result = await this.rootRepository.getFrequency(root.toString());
+    return result.records.map(VerseTransform.frequencyResponseDto);
+  }
 }

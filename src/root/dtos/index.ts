@@ -1,6 +1,7 @@
 import { Expose, plainToClass } from 'class-transformer';
 import { QueryResult, RecordShape } from 'neo4j-driver';
 
+import { FrequencyResponseDto } from './frequency-response.dto';
 import { RelationsResponseDto } from './relations-response.dto';
 import { Utils } from 'src/utils/utils';
 
@@ -29,7 +30,7 @@ export class VerseTransform {
   static relationsOneRootResponseDto(
     record: QueryResult<RecordShape>['records'][0],
   ) {
-    const tranformed = {
+    const tranformed: RelationsResponseDto = {
       roots: [
         {
           ...record.get('root').properties,
@@ -51,7 +52,7 @@ export class VerseTransform {
     record: QueryResult<RecordShape>['records'][0],
     roots: number[],
   ) {
-    const transformed = {
+    const transformed: RelationsResponseDto = {
       roots: roots.map((_, rootIndex) => {
         const ordinal = Utils.numberToOrdinal(rootIndex + 1);
 
@@ -67,6 +68,29 @@ export class VerseTransform {
     };
 
     return plainToClass(RelationsResponseDto, transformed, {
+      excludeExtraneousValues: true,
+    });
+  }
+
+  static frequencyResponseDto(record: QueryResult<RecordShape>['records'][0]) {
+    const transformed: FrequencyResponseDto = {
+      root: {
+        ...record.get('root').properties,
+        elementId: record.get('root').elementId,
+      },
+      verses: record
+        .get('verses')
+        .map((relation) => ({
+          id: relation.elementId,
+          surah: relation.properties.surah.low,
+          verse: relation.properties.verse.low,
+        }))
+        // todo: this should be done in the query
+        .sort((a, b) => a.surah - b.surah || a.verse - b.verse),
+      count: record.get('_count').low,
+    };
+
+    return plainToClass(FrequencyResponseDto, transformed, {
       excludeExtraneousValues: true,
     });
   }

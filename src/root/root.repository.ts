@@ -37,6 +37,17 @@ export class RootRepository {
     return await this.session.run(query, queryVariables);
   }
 
+  async getFrequency(root: string) {
+    return await this.session.run(
+      `MATCH (:Root {rootId:$rootId})-[occurs:OCCURS]-(n)
+       WITH n as root, COLLECT(occurs) as verses, SIZE(COLLECT(occurs)) as _count
+       RETURN root, verses, _count
+       ORDER BY _count DESC
+      `,
+      { rootId: root },
+    );
+  }
+
   private generateRelationsMultipleRootsQuery(
     roots: number[],
     returnVariables: string,
